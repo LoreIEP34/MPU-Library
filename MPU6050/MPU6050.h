@@ -12,7 +12,7 @@ class MPU6050 : public IMU {
     int scl_pin = -1;
 
     public:
-    MPU6050() : i2c_address(0x68) {} // Dirección por defecto
+    MPU6050() : i2c_address(0x68) {} // Default address
     MPU6050(bool ad0_high) : i2c_address(ad0_high ? 0x69 : 0x68) {}
     MPU6050(uint8_t address) : i2c_address(address) {}
 
