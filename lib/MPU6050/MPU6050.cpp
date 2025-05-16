@@ -1,3 +1,4 @@
+#include <arduino.h>
 #include "MPU6050.h"
 
 void MPU6050::setPins(int sda, int scl) {
@@ -31,37 +32,135 @@ bool MPU6050::begin() {
     return true;
 }
 
-void MPU6050::readAccel(float& ax, float& ay, float& az) {
-    // Read accelerometer data from the sensor
-    Wire.beginTransmission(i2c_address);
-    Wire.write(0x3B); // Starting register for accelerometer data
-    Wire.endTransmission(false);
-    Wire.requestFrom(i2c_address, 6, true); // Request 6 bytes
-
-    ax = (Wire.read() << 8 | Wire.read()) / 16384.0; // Convert to g
-    ay = (Wire.read() << 8 | Wire.read()) / 16384.0;
-    az = (Wire.read() << 8 | Wire.read()) / 16384.0;
+int16_t MPU6050::readInt16(uint8_t* data, uint8_t index) {
+    return (int16_t)((data[index] << 8) | data[index + 1]);
 }
 
-void MPU6050::readGyro(float& gx, float& gy, float& gz) {
-    // Read gyroscope data from the sensor
-    Wire.beginTransmission(i2c_address);
-    Wire.write(0x43); // Starting register for gyroscope data
-    Wire.endTransmission(false);
-    Wire.requestFrom(i2c_address, 6, true); // Request 6 bytes
+IMUData MPU6050::readRaw() {
+    const uint8_t bytesToRead = 14;
+   
+    uint8_t rawData[bytesToRead];
+    IMUData raw;
 
-    gx = (Wire.read() << 8 | Wire.read()) / 131.0; // Convert to degrees/sec
-    gy = (Wire.read() << 8 | Wire.read()) / 131.0;
-    gz = (Wire.read() << 8 | Wire.read()) / 131.0;
+    Wire.beginTransmission(i2c_address);
+    Wire.write(0x3B); // ACCEL_XOUT_H
+    Wire.endTransmission(false);
+    
+    Wire.requestFrom(i2c_address, bytesToRead);
+
+
+    for (int i = 0; i < 14; i++) {
+        rawData[i] = Wire.read();
+    }
+
+    raw.ax = readInt16(rawData, 0);
+    raw.ay = readInt16(rawData, 2);
+    raw.az = readInt16(rawData, 4);
+    raw.temp = readInt16(rawData, 6);
+    raw.gx = readInt16(rawData, 8);
+    raw.gy = readInt16(rawData, 10);
+    raw.gz = readInt16(rawData, 12);
+
+    return raw;
 }
 
-float MPU6050::readTemp() {
-    // Read temperature data from the sensor
-    Wire.beginTransmission(i2c_address);
-    Wire.write(0x41); // Starting register for temperature data
-    Wire.endTransmission(false);
-    Wire.requestFrom(i2c_address, 2, true); // Request 2 bytes
+IMUData MPU6050::ConvertToUnits(IMUData& raw, AccelUnit unit) {
+    IMUData data;
+    float accelScale =  16384.0; // 2g range
+    float gyroScale = 131.0; // 250 degrees/s range
+    float accelConversion = (unit == G) ? 1.0 : 9.80665; // m/s^2
 
-    int16_t tempRaw = (Wire.read() << 8 | Wire.read());
-    return tempRaw / 340.0 + 36.53; // Convert to degrees Celsius
+    data.ax = (raw.ax - ax_offset) / accelScale * accelConversion;
+    data.ay = (raw.ay - ay_offset) / accelScale * accelConversion;
+    data.az = (raw.az - az_offset) / accelScale * accelConversion;
+
+    data.gx = (raw.gx - gx_offset) / gyroScale; // degrees/s
+    data.gy = (raw.gy - gy_offset) / gyroScale;
+    data.gz = (raw.gz - gz_offset) / gyroScale; 
+    
+    data.temp = (raw.temp / 340.0) + 36.53; // Convert to Celsius
+
+    return data;
+}
+
+void MPU6050::calibrate(uint16_t samples) {
+    long ax_sum = 0, ay_sum = 0, az_sum = 0;
+    long gx_sum = 0, gy_sum = 0, gz_sum = 0;
+
+    int16_t ax, ay, az, gx, gy, gz;
+
+    for (uint16_t i = 0; i < samples; i++) {
+        IMUData raw = readRaw();
+
+        ax_sum += raw.ax;
+        ay_sum += raw.ay;
+        az_sum += raw.az;
+        
+        gx_sum += raw.gx;
+        gy_sum += raw.gy;
+        gz_sum += raw.gz;
+        
+        delay(2); // Pequeño delay entre muestras para evitar sobrecarga de I2C
+    }
+
+    ax_offset = ax_sum / samples;
+    ay_offset = ay_sum / samples;
+    az_offset = (az_sum / samples) - 16384;  // Ajuste para que Z = 1g
+    gx_offset = gx_sum / samples;
+    gy_offset = gy_sum / samples;
+    gz_offset = gz_sum / samples;
+}
+
+void MPU6050::printOffsets() {
+    Serial.print("Accel Offsets: ax=");
+    Serial.print(ax_offset);
+    Serial.print(", ay=");
+    Serial.print(ay_offset);
+    Serial.print(", az=");
+    Serial.println(az_offset);
+
+    Serial.print("Gyro Offsets: gx=");
+    Serial.print(gx_offset);
+    Serial.print(", gy=");
+    Serial.print(gy_offset);
+    Serial.print(", gz=");
+    Serial.println(gz_offset);
+}
+
+void MPU6050::setOffsets(int16_t ax_off, int16_t ay_off, int16_t az_off, int16_t gx_off, int16_t gy_off, int16_t gz_off) {
+    ax_offset = ax_off;
+    ay_offset = ay_off;
+    az_offset = az_off;
+    gx_offset = gx_off;
+    gy_offset = gy_off;
+    gz_offset = gz_off;
+}
+
+
+void MPU6050::printAcceleration(const IMUData& data) {
+    Serial.print("Acceleration (");
+    Serial.print("ax: ");
+    Serial.print(data.ax, 3);
+    Serial.print(", ay: ");
+    Serial.print(data.ay, 3);
+    Serial.print(", az: ");
+    Serial.print(data.az, 3);
+    Serial.println(")");
+}
+
+void MPU6050::printGyroscope(const IMUData& data) {
+    Serial.print("Gyroscope (");
+    Serial.print("gx: ");
+    Serial.print(data.gx, 3);
+    Serial.print(", gy: ");
+    Serial.print(data.gy, 3);
+    Serial.print(", gz: ");
+    Serial.print(data.gz, 3);
+    Serial.println(")");
+}
+
+void MPU6050::printTemperature(const IMUData& data) {
+    Serial.print("Temperature: ");
+    Serial.print(data.temp, 2);
+    Serial.println(" °C");
 }
