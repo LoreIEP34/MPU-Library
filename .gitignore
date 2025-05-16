@@ -1,1 +1,8 @@
-
+#PlatformIO
+.
+.pio/
+.vscode/
+*.ini
+*.log
+*.bin
+*.elf
