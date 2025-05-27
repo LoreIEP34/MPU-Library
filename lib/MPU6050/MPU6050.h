@@ -27,9 +27,15 @@ class MPU6050 : public IMU {
 
 
     void printAcceleration(const IMUData& data);
-    void printGyroscope(const IMUData& data);
-    void printTemperature(const IMUData& data);
+    //void printAccelMagnitude(const IMUData& data);
+    //void printAccelDelta(const IMUData& data);
 
+    void printGyroscope(const IMUData& data);
+    //void printGyroMagnitude(const IMUData& data);
+    //void printGyroDelta(const IMUData& data);
+
+    void printTemperature(const IMUData& data);
+    
     private:
     uint8_t i2c_address;
     int sda_pin = -1;
@@ -37,7 +43,8 @@ class MPU6050 : public IMU {
     int16_t readInt16(uint8_t* data, uint8_t index);
     int16_t ax_offset = 0, ay_offset = 0, az_offset = 0;
     int16_t gx_offset = 0, gy_offset = 0, gz_offset = 0;
-
+    IMUData raw;
+    IMUData data;
 
 };
 #endif

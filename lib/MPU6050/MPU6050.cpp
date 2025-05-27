@@ -40,7 +40,7 @@ IMUData MPU6050::readRaw() {
     const uint8_t bytesToRead = 14;
    
     uint8_t rawData[bytesToRead];
-    IMUData raw;
+    //IMUData raw;
 
     Wire.beginTransmission(i2c_address);
     Wire.write(0x3B); // ACCEL_XOUT_H
@@ -65,7 +65,6 @@ IMUData MPU6050::readRaw() {
 }
 
 IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
-    IMUData data;
     float accelScale =  16384.0; // 2g range
     float gyroScale = 131.0; // 250 degrees/s range
     float accelConversion = (unit == G) ? 1.0 : 9.80665; // m/s^2
@@ -84,7 +83,7 @@ IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
 }
 
 float MPU6050::getAccelerationMagnitude() {
-    IMUData raw = readRaw();
+    
     IMUData data = convertToUnits(raw);
     float magnitude = sqrt(pow(data.ax, 2) + pow(data.ay, 2) + pow(data.az, 2));
     return magnitude;
@@ -95,13 +94,13 @@ float MPU6050::calibrateMagnitudeDelta(unsigned long duration_ms) {
     unsigned long start = millis();
 
     while (millis() - start < duration_ms) {
-        IMUData raw = readRaw();
+        raw = readRaw();
         convertToUnits(raw);
         float mag = getAccelerationMagnitude();
 
         if (mag < minMag) minMag = mag;
         if (mag > maxMag) maxMag = mag;
-
+       
         delay(10); // 100 Hz
     }
     float delta = maxMag - minMag;
@@ -114,7 +113,7 @@ void MPU6050::calibrate(uint16_t samples) {
     long gx_sum = 0, gy_sum = 0, gz_sum = 0;
 
     for (uint16_t i = 0; i < samples; i++) {
-        IMUData raw = readRaw();
+        raw = readRaw();
 
         ax_sum += raw.ax;
         ay_sum += raw.ay;
