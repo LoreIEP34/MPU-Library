@@ -86,7 +86,26 @@ IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
 float MPU6050::getAccelerationMagnitude() {
     IMUData raw = readRaw();
     IMUData data = convertToUnits(raw);
-    return sqrt(pow(data.ax, 2) + pow(data.ay, 2) + pow(data.az, 2));
+    float magnitude = sqrt(pow(data.ax, 2) + pow(data.ay, 2) + pow(data.az, 2));
+    return magnitude;
+}
+float MPU6050::calibrateMagnitudeDelta(unsigned long duration_ms) {
+    float minMag = 1000.0f;
+    float maxMag = 0.0f;
+    unsigned long start = millis();
+
+    while (millis() - start < duration_ms) {
+        IMUData raw = readRaw();
+        convertToUnits(raw);
+        float mag = getAccelerationMagnitude();
+
+        if (mag < minMag) minMag = mag;
+        if (mag > maxMag) maxMag = mag;
+
+        delay(10); // 100 Hz
+    }
+    float delta = maxMag - minMag;
+    return delta;
 }
 
 
