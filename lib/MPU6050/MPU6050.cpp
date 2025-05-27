@@ -64,7 +64,7 @@ IMUData MPU6050::readRaw() {
     return raw;
 }
 
-IMUData MPU6050::ConvertToUnits(IMUData& raw, AccelUnit unit) {
+IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
     IMUData data;
     float accelScale =  16384.0; // 2g range
     float gyroScale = 131.0; // 250 degrees/s range
@@ -83,11 +83,16 @@ IMUData MPU6050::ConvertToUnits(IMUData& raw, AccelUnit unit) {
     return data;
 }
 
+float MPU6050::getAccelerationMagnitude() {
+    IMUData raw = readRaw();
+    IMUData data = convertToUnits(raw);
+    return sqrt(pow(data.ax, 2) + pow(data.ay, 2) + pow(data.az, 2));
+}
+
+
 void MPU6050::calibrate(uint16_t samples) {
     long ax_sum = 0, ay_sum = 0, az_sum = 0;
     long gx_sum = 0, gy_sum = 0, gz_sum = 0;
-
-    int16_t ax, ay, az, gx, gy, gz;
 
     for (uint16_t i = 0; i < samples; i++) {
         IMUData raw = readRaw();
@@ -110,6 +115,7 @@ void MPU6050::calibrate(uint16_t samples) {
     gy_offset = gy_sum / samples;
     gz_offset = gz_sum / samples;
 }
+
 
 void MPU6050::printOffsets() {
     Serial.print("Accel Offsets: ax=");

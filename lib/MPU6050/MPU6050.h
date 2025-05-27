@@ -16,12 +16,14 @@ class MPU6050 : public IMU {
     bool begin() override;
      
     IMUData readRaw() override;
-    IMUData ConvertToUnits(IMUData& raw, AccelUnit unit = G);
+    IMUData convertToUnits(IMUData& raw, AccelUnit unit = G);
 
     void calibrate(uint16_t samples = 100);
     void printOffsets();
     void setOffsets(int16_t ax_off, int16_t ay_off, int16_t az_off, int16_t gx_off, int16_t gy_off, int16_t gz_off);
     
+    float getAccelerationMagnitude();
+
     void printAcceleration(const IMUData& data);
     void printGyroscope(const IMUData& data);
     void printTemperature(const IMUData& data);
