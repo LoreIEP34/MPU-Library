@@ -188,3 +188,5 @@ void MPU6050::printTemperature(const IMUData& data) {
     Serial.print(data.temp, 2);
     Serial.println(" °C");
 }
+
+
