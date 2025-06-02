@@ -44,9 +44,18 @@ IMUData MPU6050::readRaw() {
 
     Wire.beginTransmission(i2c_address);
     Wire.write(0x3B); // ACCEL_XOUT_H
-    Wire.endTransmission(false);
+    
+    if (Wire.endTransmission(false) != 0) {
+        Serial.println("Error reading from MPU6050");
+        raw.ready = false; // Indicate error
+        return  raw;
+    }        
     
     Wire.requestFrom(i2c_address, bytesToRead);
+    if (Wire.available() < bytesToRead) {
+        Serial.println("Not enough data available from MPU6050");
+        
+    }
 
 
     for (int i = 0; i < 14; i++) {

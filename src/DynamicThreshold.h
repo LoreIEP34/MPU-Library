@@ -10,6 +10,12 @@ struct DThData {
 
 };
 
+struct CircularBuffer {
+    static const uint8_t size = 40;
+    float values[size];
+    int index = 0;
+};
+
 class DynamicThreshold {
     public:
 
@@ -18,14 +24,19 @@ class DynamicThreshold {
     bool isAbove(float currentValue); 
     
     // Métodos para ajustar el umbral dinámico 
-    void setAlpha(float newAlpha);
+    bool setAlpha(float newAlpha);
     void setMultiplier(float newMultiplier);
+
+    //
+    void updateBuffer(float mag); 
+    float mean();
+    float stdDev(float mean);
 
     private:
 
     DThData data; // Estructura para almacenar los datos del umbral dinámico
-   
-    //DynamicThreshold accelThreshold;
+    CircularBuffer buffer; // Buffer circular para almacenar magnitudes
+
 };
 
 #endif

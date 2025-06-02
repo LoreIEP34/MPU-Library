@@ -10,6 +10,7 @@ struct IMUData {
     float ax, ay, az;
     float gx, gy, gz;
     float temp = 0.0;
+    bool ready = false; 
 };
 
 class IMU {
