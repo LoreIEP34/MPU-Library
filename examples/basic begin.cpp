@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <Wire.h>
 #include "MPU6050.h"
 
 // Create the sensor object
@@ -7,12 +6,11 @@ MPU6050 sensor;  // default address 0x68
 // If you want to use address 0x69, use MPU6050 sensor(true); or MPU6050 sensor(0x69);
 
 void setup() {
-    delay(2000);  // Wait for the serial monitor to open
     Serial.begin(115200);
+    delay(1500);  // Wait for the serial monitor to open
     while (!Serial);
 
- // sensor.setPins(21, 22); 
- // If you want to use specific pins, uncomment this line and adjust the pin numbers
+ // sensor.setPins(21, 22); // If you want to use specific pins, uncomment this line and adjust the pin numbers
 
 
   // Initialize the sensor
@@ -28,3 +26,4 @@ void loop() {
 
   delay(1000);  // 1-second delay
 }
+

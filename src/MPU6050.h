@@ -17,6 +17,7 @@ class MPU6050 : public IMU {
 
     //--------------- Set custom SDA and SCL pins and initialize I2C  ---------------
     void setPins(int sda, int scl);
+    bool isConnected();
     bool begin() override;
      
     //--------------- Read raw data from the MPU6050 sensor and convert to units  ---------------
@@ -53,6 +54,9 @@ class MPU6050 : public IMU {
     
     // Read a single byte from the MPU6050
     int16_t readInt16(uint8_t* data, uint8_t index);
+
+    // Read multiple registers from the MPU6050
+    bool readRegisters(uint8_t startRegister, uint8_t* buffer, uint8_t length);
     
     //--------------- Private variables for calibration and data storage  ---------------
     int16_t ax_offset = 0, ay_offset = 0, az_offset = 0;
@@ -60,6 +64,7 @@ class MPU6050 : public IMU {
     
     IMUData raw;
     IMUData data;
+ 
 
     
 };

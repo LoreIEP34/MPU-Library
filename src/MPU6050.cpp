@@ -6,71 +6,80 @@ void MPU6050::setPins(int sda, int scl) {
     scl_pin = scl;
 }
 
-bool MPU6050::begin() {
-
-    if (sda_pin >= 0 && scl_pin >= 0) { // Check if custom pins are set
-        Wire.begin(sda_pin, scl_pin); // Initialize I2C with custom pins
-    } else {
-        Wire.begin();  // Initialize I2C with default pins
-    }
-
-    // Check connection with the sensor
+bool MPU6050::isConnected() {
     Wire.beginTransmission(i2c_address);
-    uint8_t error = Wire.endTransmission();
+    return Wire.endTransmission() == 0;
+}
 
-    if (error != 0) {
-        return false;  // Sensor does not respond at the specified address
-    }
+bool MPU6050::begin() {
+    static bool wireInitialized = false;
+    static bool isInitialized = false;
 
+
+    if (!wireInitialized) {
+        if (sda_pin >= 0 && scl_pin >= 0) { // Check if custom pins are set
+            Wire.begin(sda_pin, scl_pin); // Initialize I2C with custom pins
+        } else {
+            Wire.begin();  // Initialize I2C with default pins
+        }
+        wireInitialized = true; // Set the flag to true after initialization
+    }   
+
+    if (!isConnected()) return false;
+
+    if (isInitialized) return true; // If already initialized, skip further setup
     // Wake up the sensor (PWR_MGMT_1 register)
     Wire.beginTransmission(i2c_address);
     Wire.write(0x6B); // Register address for PWR_MGMT_1
     Wire.write(0x00);  // Set SLEEP bit to 0 to wake up the sensor
     Wire.endTransmission();
 
+    isInitialized = true; // Set the flag to true after initialization
     delay(100); // Allow time for the sensor to stabilize
     return true;
 }
 
 int16_t MPU6050::readInt16(uint8_t* data, uint8_t index) {
-    return (int16_t)((data[index] << 8) | data[index + 1]);
+    return (int16_t)(((uint16_t)data[index] << 8) | data[index + 1]);
+}
+
+bool MPU6050::readRegisters(uint8_t startRegister, uint8_t* buffer, uint8_t length) {
+    Wire.beginTransmission(i2c_address);
+    Wire.write(startRegister);
+    if (Wire.endTransmission(false) != 0) return false;
+    
+    Wire.requestFrom(i2c_address, length);
+    if (Wire.available() < length) return false;
+
+    for (uint8_t i = 0; i < length; i++) {
+        buffer[i] = Wire.read();
+    }
+    return true;
 }
 
 IMUData MPU6050::readRaw() {
     const uint8_t bytesToRead = 14;
-   
     uint8_t rawData[bytesToRead];
-    //IMUData raw;
 
-    Wire.beginTransmission(i2c_address);
-    Wire.write(0x3B); // ACCEL_XOUT_H
-    
-    if (Wire.endTransmission(false) != 0) {
-        Serial.println("Error reading from MPU6050");
-        raw.ready = false; // Indicate error
-        return  raw;
-    }        
-    
-    Wire.requestFrom(i2c_address, bytesToRead);
-    if (Wire.available() < bytesToRead) {
-        Serial.println("Not enough data available from MPU6050");
-        
+    if (!readRegisters(0x3B, rawData, bytesToRead)) {
+        Serial.println("Error leyendo datos del MPU6050");
+        raw.ready = false; 
+        return raw;
     }
 
+    raw.accel.x = readInt16(rawData, 0);
+    raw.accel.y = readInt16(rawData, 2);
+    raw.accel.z = readInt16(rawData, 4);
 
-    for (int i = 0; i < 14; i++) {
-        rawData[i] = Wire.read();
-    }
+    raw.temp.data = readInt16(rawData, 6); // Temperatura en 16 bits
+    
+    raw.gyro.x = readInt16(rawData, 8);
+    raw.gyro.y = readInt16(rawData, 10);
+    raw.gyro.z = readInt16(rawData, 12);
 
-    raw.ax = readInt16(rawData, 0);
-    raw.ay = readInt16(rawData, 2);
-    raw.az = readInt16(rawData, 4);
-    raw.temp = readInt16(rawData, 6);
-    raw.gx = readInt16(rawData, 8);
-    raw.gy = readInt16(rawData, 10);
-    raw.gz = readInt16(rawData, 12);
-
+    raw.ready = true; // Marca que los datos están listos
     return raw;
+
 }
 
 IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
@@ -78,15 +87,15 @@ IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
     float gyroScale = 131.0; // 250 degrees/s range
     float accelConversion = (unit == G) ? 1.0 : 9.80665; // m/s^2
 
-    data.ax = (raw.ax - ax_offset) / accelScale * accelConversion;
-    data.ay = (raw.ay - ay_offset) / accelScale * accelConversion;
-    data.az = (raw.az - az_offset) / accelScale * accelConversion;
+    data.accel.x = (raw.accel.x - ax_offset) / accelScale * accelConversion;
+    data.accel.y = (raw.accel.y - ay_offset) / accelScale * accelConversion;
+    data.accel.z = (raw.accel.z - az_offset) / accelScale * accelConversion;
 
-    data.gx = (raw.gx - gx_offset) / gyroScale; // degrees/s
-    data.gy = (raw.gy - gy_offset) / gyroScale;
-    data.gz = (raw.gz - gz_offset) / gyroScale; 
-    
-    data.temp = (raw.temp / 340.0) + 36.53; // Convert to Celsius
+    data.gyro.x = (raw.gyro.x - gx_offset) / gyroScale; // degrees/s    
+    data.gyro.y = (raw.gyro.y - gy_offset) / gyroScale;
+    data.gyro.z = (raw.gyro.z - gz_offset) / gyroScale;
+
+    data.temp.data = (raw.temp.data / 340.0) + 36.53; // Convert to Celsius
 
     return data;
 }
@@ -94,7 +103,7 @@ IMUData MPU6050::convertToUnits(IMUData& raw, AccelUnit unit) {
 float MPU6050::getAccelerationMagnitude() {
     
     IMUData data = convertToUnits(raw);
-    float magnitude = sqrt(pow(data.ax, 2) + pow(data.ay, 2) + pow(data.az, 2));
+    float magnitude = sqrt(pow(data.accel.x, 2) + pow(data.accel.y, 2) + pow(data.accel.z, 2));
     return magnitude;
 }
 float MPU6050::calibrateMagnitudeDelta(unsigned long duration_ms) {
@@ -124,13 +133,13 @@ void MPU6050::calibrate(uint16_t samples) {
     for (uint16_t i = 0; i < samples; i++) {
         raw = readRaw();
 
-        ax_sum += raw.ax;
-        ay_sum += raw.ay;
-        az_sum += raw.az;
+        ax_sum += raw.accel.x;
+        ay_sum += raw.accel.y;
+        az_sum += raw.accel.z;
         
-        gx_sum += raw.gx;
-        gy_sum += raw.gy;
-        gz_sum += raw.gz;
+        gx_sum += raw.gyro.x;
+        gy_sum += raw.gyro.y;
+        gz_sum += raw.gyro.z;
         
         delay(2); // Pequeño delay entre muestras para evitar sobrecarga de I2C
     }
@@ -173,28 +182,28 @@ void MPU6050::setOffsets(int16_t ax_off, int16_t ay_off, int16_t az_off, int16_t
 void MPU6050::printAcceleration(const IMUData& data) {
     Serial.print("Acceleration (");
     Serial.print("ax: ");
-    Serial.print(data.ax, 3);
+    Serial.print(data.accel.x, 3);
     Serial.print(", ay: ");
-    Serial.print(data.ay, 3);
+    Serial.print(data.accel.y, 3);
     Serial.print(", az: ");
-    Serial.print(data.az, 3);
+    Serial.print(data.accel.z, 3);
     Serial.println(")");
 }
 
 void MPU6050::printGyroscope(const IMUData& data) {
     Serial.print("Gyroscope (");
     Serial.print("gx: ");
-    Serial.print(data.gx, 3);
+    Serial.print(data.gyro.x, 3);
     Serial.print(", gy: ");
-    Serial.print(data.gy, 3);
+    Serial.print(data.gyro.y, 3);
     Serial.print(", gz: ");
-    Serial.print(data.gz, 3);
+    Serial.print(data.gyro.z, 3);
     Serial.println(")");
 }
 
 void MPU6050::printTemperature(const IMUData& data) {
     Serial.print("Temperature: ");
-    Serial.print(data.temp, 2);
+    Serial.print(data.temp.data, 2);
     Serial.println(" °C");
 }
 

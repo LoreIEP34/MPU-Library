@@ -7,6 +7,7 @@ DynamicThreshold::DynamicThreshold() {
     data.dynamicReference = -1.0f;
     data.alpha = 0.1f;
     data.multiplier = 1.2f; // Ajustable
+    data.Delta = 0.1f; // Delta de magnitud, ajustable
 }
 
 void DynamicThreshold::update(float currentValue) {
@@ -19,8 +20,11 @@ void DynamicThreshold::update(float currentValue) {
     data.threshold = data.dynamicReference * data.multiplier; // Ajustable
 }
 
+
 bool DynamicThreshold::isAbove(float currentValue) {
-    return currentValue > data.threshold;
+    float threshold;
+    threshold = max(data.threshold, data.Delta); // Asegura que el umbral sea al menos el delta
+    return currentValue > threshold; // Compara el valor actual con el umbral dinámico
 }
 
 

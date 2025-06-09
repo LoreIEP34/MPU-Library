@@ -7,6 +7,7 @@ struct DThData {
     float dynamicReference; // Referencia dinámica para el umbral
     float alpha; // Factor de suavizado para la referencia dinámica
     float multiplier; // Multiplicador para el umbral dinámico
+    float Delta; // Delta de magnitud
 
 };
 
@@ -21,6 +22,7 @@ class DynamicThreshold {
 
     DynamicThreshold(); // Constructor declarado
     void update(float currentValue); 
+    void setDelta(float delta) { data.Delta = delta; } // Método para establecer el delta de magnitud
     bool isAbove(float currentValue); 
     
     // Métodos para ajustar el umbral dinámico 

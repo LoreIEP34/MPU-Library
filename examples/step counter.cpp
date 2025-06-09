@@ -33,7 +33,7 @@ void setup() {
     float delta = imu.calibrateMagnitudeDelta();
     Serial.print("Delta de magnitud en reposo: ");
     Serial.println(delta, 4);
-
+    dth.setDelta(delta); 
 
 }
 
@@ -46,7 +46,8 @@ void loop() {
 
 // ---------------------------     funcionamiento del umbral dinámico       ----------------------------    
 // Actualizar umbral dinámico
-    dth.update(magnitude);
+    dth.updateBuffer(magnitude);
+    dth.update(magnitude); 
     bool isAbove = dth.isAbove(magnitude);
 
     // Verificación de cruce de umbral (LOW to HIGH) y tiempo mínimo entre pasos

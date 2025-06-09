@@ -6,3 +6,4 @@
 *.log
 *.bin
 *.elf
+main.cpp

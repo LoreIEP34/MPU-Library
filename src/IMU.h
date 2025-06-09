@@ -6,10 +6,23 @@ enum AccelUnit {
     MS2
 };
 
+
+
+struct AccelData {
+    float x = 0, y = 0, z = 0;
+};
+struct GyroData {
+    float x = 0, y = 0, z = 0;
+};
+struct TempData {
+    float data = 0;
+};
+
+
 struct IMUData {
-    float ax, ay, az;
-    float gx, gy, gz;
-    float temp = 0.0;
+    AccelData accel;
+    GyroData gyro;
+    TempData temp;
     bool ready = false; 
 };
 
